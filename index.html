@@ -1,256 +1,286 @@
 <!DOCTYPE html>
 <html lang="he">
+
 <head>
     <title>זוםזום</title>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8" />
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+        integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+
+    <!-- Bootstrap Theme -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap-theme.min.css"
+        integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+
+    <!-- Project Style -->
+    <link rel="stylesheet" type="text/css" href="/styles.css?v=10">
+
 </head>
+
 <body>
+    <!--Add buttons to initiate auth sequence and sign out-->    
+    <div class="row">
+        <div class="col-xs-12 col-sm-6 col-md-4">            
+            <button type="button" class="btn btn-link"  id="signout_button" style="display: none;">התנתק</button>
+        </div>
+        <div class="col-xs-12 col-sm-12 col-md-12">
+            <button type="button" class="btn btn-primary" id="authorize_button" style="display: none;">התחבר</button>
+            <button type="button" class="btn btn-success" id="schedule_info_button" style="display: none;" onclick="main()">קח אותי לשיעור</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-12">
+                <a href="#" target="_blank" id="class_link" style="display: none;"></a>
+        </div>
+    </div>
 
-<!--Add buttons to initiate auth sequence and sign out-->
-<button id="authorize_button" style="display: none;">Authorize</button>
-<button id="signout_button" style="display: none;">Sign Out</button>
+    <script type="text/javascript">
+        // Client ID and API key from the Developer Console
+        const CLIENT_ID = '270137365189-toprtuse8afokgqvt2c7n8rfc4dd9kms.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyC4oT9oQjYuXQQYhFtvauvQLp2cX3-UiRE';
 
-<pre id="content" style="white-space: pre-wrap;"></pre>
+        // Array of API discovery doc URLs for APIs used by the quickstart
+        const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/classroom/v1/rest", "https://docs.googleapis.com/$discovery/rest?version=v1"];
 
-<script type="text/javascript">
-    // Client ID and API key from the Developer Console
-    const CLIENT_ID = '270137365189-toprtuse8afokgqvt2c7n8rfc4dd9kms.apps.googleusercontent.com';
-    const API_KEY = 'AIzaSyC4oT9oQjYuXQQYhFtvauvQLp2cX3-UiRE';
+        // Authorization scopes required by the API; multiple scopes can be
+        // included, separated by spaces.
+        const SCOPES = "https://www.googleapis.com/auth/classroom.courses.readonly " +
+            "https://www.googleapis.com/auth/classroom.announcements.readonly " +
+            "https://www.googleapis.com/auth/documents.readonly";
 
-    // Array of API discovery doc URLs for APIs used by the quickstart
-    const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/classroom/v1/rest", "https://docs.googleapis.com/$discovery/rest?version=v1"];
+        const COURSE_ID = 152015437318;
+        const FILE_NAME_PREFIX = 'מערכת שעות';
+        //const EXPECTED_TIMEZONE_OFFSET = -180;
+        /*
+        const SCHEDULE_TIME_SLOTS = [
+            {start: 8.25, end: 8.5},
+            {start: 8.5, end: 9},
+            {start: 9.5, end: 10},
+            {start: 10.5, end: 11},
+            {start: 11.5, end: 12},
+            {start: 12.5, end: 13}];
+            */
+        const SCHEDULE_TIME_SLOTS = [
+            { start: 8, end: 8.5 },
+            { start: 8.5, end: 9 },
+            { start: 9, end: 10 },
+            { start: 10, end: 11 },
+            { start: 11, end: 12 },
+            { start: 12, end: 13 }];
 
-    // Authorization scopes required by the API; multiple scopes can be
-    // included, separated by spaces.
-    const SCOPES = "https://www.googleapis.com/auth/classroom.courses.readonly " +
-        "https://www.googleapis.com/auth/classroom.announcements.readonly " +
-        "https://www.googleapis.com/auth/documents.readonly";
+        let authorizeButton = document.getElementById('authorize_button');
+        let signoutButton = document.getElementById('signout_button');
+        let scheduleInfoButton = document.getElementById('schedule_info_button');
+        let classLinkButton = document.getElementById('class_link');
 
-    const COURSE_ID = 152015437318;
-    const FILE_NAME_PREFIX = 'מערכת שעות';
-    //const EXPECTED_TIMEZONE_OFFSET = -180;
-    /*
-    const SCHEDULE_TIME_SLOTS = [
-        {start: 8.25, end: 8.5},
-        {start: 8.5, end: 9},
-        {start: 9.5, end: 10},
-        {start: 10.5, end: 11},
-        {start: 11.5, end: 12},
-        {start: 12.5, end: 13}];
-        */
-    const SCHEDULE_TIME_SLOTS = [
-        {start: 8, end: 8.5},
-        {start: 8.5, end: 9},
-        {start: 9, end: 10},
-        {start: 10, end: 11},
-        {start: 11, end: 12},
-        {start: 12, end: 13}];
-
-    let authorizeButton = document.getElementById('authorize_button');
-    let signoutButton = document.getElementById('signout_button');
-
-    /**
-     *  On load, called to load the auth2 library and API client library.
-     */
-    function handleClientLoad() {
-        gapi.load('client:auth2', initClient);
-    }
-
-    /**
-     *  Initializes the API client library and sets up sign-in state
-     *  listeners.
-     */
-    function initClient() {
-        gapi.client.init({
-            apiKey: API_KEY,
-            clientId: CLIENT_ID,
-            discoveryDocs: DISCOVERY_DOCS,
-            scope: SCOPES
-        }).then(function () {
-            // Listen for sign-in state changes.
-            gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-
-            // Handle the initial sign-in state.
-            updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-            authorizeButton.onclick = handleAuthClick;
-            signoutButton.onclick = handleSignoutClick;
-        }, function (error) {
-            console.error(JSON.stringify(error, null, 2));
-        });
-    }
-
-    /**
-     *  Called when the signed in status changes, to update the UI
-     *  appropriately. After a sign-in, the API is called.
-     */
-    function updateSigninStatus(isSignedIn) {
-        if (isSignedIn) {
-            authorizeButton.style.display = 'none';
-            signoutButton.style.display = 'block';
-
-            main();
-        } else {
-            authorizeButton.style.display = 'block';
-            signoutButton.style.display = 'none';
+        /**
+         *  On load, called to load the auth2 library and API client library.
+         */
+        function handleClientLoad() {
+            gapi.load('client:auth2', initClient);
         }
-    }
 
-    /**
-     *  Sign in the user upon button click.
-     */
-    function handleAuthClick(event) {
-        gapi.auth2.getAuthInstance().signIn();
-    }
+        /**
+         *  Initializes the API client library and sets up sign-in state
+         *  listeners.
+         */
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                discoveryDocs: DISCOVERY_DOCS,
+                scope: SCOPES
+            }).then(function () {
+                // Listen for sign-in state changes.
+                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
 
-    /**
-     *  Sign out the user upon button click.
-     */
-    function handleSignoutClick(event) {
-        gapi.auth2.getAuthInstance().signOut();
-    }
-
-
-    async function getScheduleFileIdFromAnnouncements() {
-        try {
-            const response = await gapi.client.classroom.courses.announcements.list({
-                pageSize: 20,
-                courseId: COURSE_ID
+                // Handle the initial sign-in state.
+                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+                authorizeButton.onclick = handleAuthClick;
+                signoutButton.onclick = handleSignoutClick;
+            }, function (error) {
+                console.error(JSON.stringify(error, null, 2));
             });
+        }
 
-            console.log("Announcements fetched");
+        /**
+         *  Called when the signed in status changes, to update the UI
+         *  appropriately. After a sign-in, the API is called.
+         */
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                authorizeButton.style.display = 'none';
+                signoutButton.style.display = 'block';
+                scheduleInfoButton.style.display = 'block';
+            } else {
+                authorizeButton.style.display = 'block';
+                signoutButton.style.display = 'none';
+                scheduleInfoButton.style.display = 'none';
+                classLinkButton.style.display = 'none';
+            }
+        }
 
-            let announcements = response.result.announcements;
+        /**
+         *  Sign in the user upon button click.
+         */
+        function handleAuthClick(event) {
+            gapi.auth2.getAuthInstance().signIn();
+        }
 
-            if (announcements.length > 0) {
-                for (let i = 0; i < announcements.length; i++) {
-                    let announcement = announcements[i];
-                    if (announcement.materials.length > 0) {
-                        const result = announcement.materials.filter(m => m.driveFile.driveFile.title.includes(FILE_NAME_PREFIX));
-                        if (result.length > 0) {
-                            console.log(`Found the following schedule file ${result[0].driveFile.driveFile.title} in the following announcement: ${announcement.text}`)
-                            return result[0].driveFile.driveFile.id;
+        /**
+         *  Sign out the user upon button click.
+         */
+        function handleSignoutClick(event) {
+            gapi.auth2.getAuthInstance().signOut();
+        }
+
+
+        async function getScheduleFileIdFromAnnouncements() {
+            try {
+                const response = await gapi.client.classroom.courses.announcements.list({
+                    pageSize: 20,
+                    courseId: COURSE_ID
+                });
+
+                console.log("Announcements fetched");
+
+                let announcements = response.result.announcements;
+
+                if (announcements.length > 0) {
+                    for (let i = 0; i < announcements.length; i++) {
+                        let announcement = announcements[i];
+                        if (announcement.materials.length > 0) {
+                            const result = announcement.materials.filter(m => m.driveFile.driveFile.title.includes(FILE_NAME_PREFIX));
+                            if (result.length > 0) {
+                                console.log(`Found the following schedule file ${result[0].driveFile.driveFile.title} in the following announcement: ${announcement.text}`)
+                                return result[0].driveFile.driveFile.id;
+                            }
+                        }
+                    }
+                } else {
+                    throw 'No announcements found';
+                }
+            } catch (ex) {
+                console.error('Error obtaining schedule file from announcements: ' + ex.message);
+                return null;
+            }
+        }
+
+        async function fetchSchedule(google_document_id) {
+            try {
+                const response = await gapi.client.docs.documents.get({
+                    documentId: google_document_id
+                });
+                let doc = response.result;
+                let title = doc.title;
+                console.log(`Document "${title}" successfully found.`);
+
+                let content = doc.body.content;
+                const tables = content.filter(c => 'table' in c);
+
+                if (tables.length > 0) {
+                    return tables[0].table;
+                } else {
+                    throw 'No tables found';
+                }
+            } catch (ex) {
+                console.error('Error fetching schedule: ' + ex.message);
+                return null;
+            }
+        }
+
+
+        function parseTableCell(cell) {
+            let result = { text: '', url: '' };
+
+            // There will be a paragraph entry for each row in the cell's content
+            for (let contentEntry of cell.content) {
+                if ('paragraph' in contentEntry) {
+                    let paragraphElements = contentEntry.paragraph.elements;
+                    for (let pElement of paragraphElements) {
+                        if ('textRun' in pElement) {
+                            result.text += pElement.textRun.content + ' ';
+
+                            let textLink = pElement.textRun.textStyle.link;
+                            if (textLink) {
+                                result.url = textLink.url;
+                            }
                         }
                     }
                 }
-            } else {
-                throw 'No announcements found';
             }
-        } catch (ex) {
-            console.error('Error obtaining schedule file from announcements: ' + ex.message);
-            return null;
+
+            return result;
         }
-    }
 
-    async function fetchSchedule(google_document_id) {
-        try {
-            const response = await gapi.client.docs.documents.get({
-                documentId: google_document_id
-            });
-            let doc = response.result;
-            let title = doc.title;
-            console.log(`Document "${title}" successfully found.`);
 
-            let content = doc.body.content;
-            const tables = content.filter(c => 'table' in c);
+        function parseSchedule(scheduleTable) {
+            let parsedSchedule = [];
+            for (let row of scheduleTable.tableRows) {
+                let parsedRow = [];
+                let cells = row.tableCells
 
-            if (tables.length > 0) {
-                return tables[0].table;
-            } else {
-                throw 'No tables found';
+                for (let cell of cells) {
+                    parsedRow.push(parseTableCell(cell));
+                }
+
+                parsedSchedule.push(parsedRow);
             }
-        } catch (ex) {
-            console.error('Error fetching schedule: ' + ex.message);
-            return null;
+            return parsedSchedule;
         }
-    }
 
 
-    function parseTableCell(cell) {
-        let result = {text: '', url: ''};
+        async function main() {
 
-        // There will be a paragraph entry for each row in the cell's content
-        for (let contentEntry of cell.content) {
-            if ('paragraph' in contentEntry) {
-                let paragraphElements = contentEntry.paragraph.elements;
-                for (let pElement of paragraphElements) {
-                    if ('textRun' in pElement) {
-                        result.text += pElement.textRun.content + ' ';
+            let scheduleFileId = await getScheduleFileIdFromAnnouncements();
+            let scheduleTable = await fetchSchedule(scheduleFileId);
+            let parsedSchedule = parseSchedule(scheduleTable);
 
-                        let textLink = pElement.textRun.textStyle.link;
-                        if (textLink) {
-                            result.url = textLink.url;
-                        }
-                    }
+            let currentDate = new Date();
+            let time = currentDate.getHours() + (currentDate.getMinutes() / 60);
+
+            let row = 0;
+
+            for (let i = 0; i < SCHEDULE_TIME_SLOTS.length; i++) {
+                if (time >= SCHEDULE_TIME_SLOTS[i].start && time < SCHEDULE_TIME_SLOTS[i].end) {
+                    // Add 1 due to header row in the schedule
+                    row = i + 1;
+                    break;
                 }
             }
-        }
 
-        return result;
-    }
+            let targetClassText = null;
+            let targetClassUrl = null;
 
+            if (row > 0) {
 
-    function parseSchedule(scheduleTable) {
-        let parsedSchedule = [];
-        for (let row of scheduleTable.tableRows) {
-            let parsedRow = [];
-            let cells = row.tableCells
+                //Add 1 due to header column in the schedule
+                let column = currentDate.getDay() + 1;
 
-            for (let cell of cells) {
-                parsedRow.push(parseTableCell(cell));
+                targetClassText = parsedSchedule[row][column].text.trim();
+                targetClassUrl = parsedSchedule[row][column].url;
             }
 
-            parsedSchedule.push(parsedRow);
-        }
-        return parsedSchedule;
-    }
-
-
-    async function main() {
-
-        let scheduleFileId = await getScheduleFileIdFromAnnouncements();
-        let scheduleTable = await fetchSchedule(scheduleFileId);
-        let parsedSchedule = parseSchedule(scheduleTable);
-
-        let currentDate = new Date();
-        let time = currentDate.getHours() + (currentDate.getMinutes() / 60);
-
-        let row = 0;
-
-        for (let i = 0; i < SCHEDULE_TIME_SLOTS.length; i++) {
-            if (time >= SCHEDULE_TIME_SLOTS[i].start && time < SCHEDULE_TIME_SLOTS[i].end) {
-                // Add 1 due to header row in the schedule
-                row = i + 1;
-                break;
+            if (targetClassUrl) {
+                let win = window.open(targetClassUrl, '_blank');
+                win.focus();
+                //Object.assign(document.createElement('a'), { target: '_blank', href: targetClassUrl }).click()
+                classLinkButton.innerHTML = targetClassText;
+                classLinkButton.href = targetClassUrl;
+                classLinkButton.style.display = 'block';
+            } else {
+                console.log('No zoom class URL found');
+                classLinkButton.style.display = 'none';
             }
+
+            console.log('main done');
         }
+    </script>
 
-        let targetClassText = null;
-        let targetClassUrl = null;
-
-        if (row > 0) {
-
-            //Add 1 due to header column in the schedule
-            let column = currentDate.getDay() + 1;
-
-            targetClassText = parsedSchedule[row][column].text.trim();
-            targetClassUrl = parsedSchedule[row][column].url;
-        }
-
-        if (targetClassUrl) {
-            //let win = window.open(targetClassUrl, '_blank');
-            //win.focus();
-            Object.assign(document.createElement('a'), {target: '_blank', href: targetClassUrl}).click()
-        } else {
-            console.log('No zoom class URL found');
-        }
-
-        console.log('main done');
-    }
-</script>
-
-<script async defer src="https://apis.google.com/js/api.js"
-        onload="this.onload=function(){};handleClientLoad()"
+    <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()"
         onreadystatechange="if (this.readyState === 'complete') this.onload()">
-</script>
+        </script>
 </body>
+
 </html>
