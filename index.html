@@ -14,7 +14,7 @@
         integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
 
     <!-- Project Style -->
-    <link rel="stylesheet" type="text/css" href="/styles.css?v=10">
+    <link rel="stylesheet" type="text/css" href="/styles.css?v=12">
 
 </head>
 
@@ -31,7 +31,12 @@
     </div>
     <div class="row">
         <div class="col-xs-12 col-sm-12 col-md-12">
-                <a href="#" target="_blank" id="class_link" style="display: none;"></a>
+            <a href="#" target="_blank" id="class_link_button" style="display: none;"></a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-12">
+            <p id="schedule_text_message"></p>
         </div>
     </div>
 
@@ -72,7 +77,8 @@
         let authorizeButton = document.getElementById('authorize_button');
         let signoutButton = document.getElementById('signout_button');
         let scheduleInfoButton = document.getElementById('schedule_info_button');
-        let classLinkButton = document.getElementById('class_link');
+        let classLinkButton = document.getElementById('class_link_button');
+        let scheduleTextMessage = document.getElementById('schedule_text_message');
 
         /**
          *  On load, called to load the auth2 library and API client library.
@@ -119,6 +125,8 @@
                 scheduleInfoButton.style.display = 'none';
                 classLinkButton.style.display = 'none';
             }
+
+            scheduleTextMessage.innerHTML = '';
         }
 
         /**
@@ -263,15 +271,21 @@
             }
 
             if (targetClassUrl) {
-                let win = window.open(targetClassUrl, '_blank');
-                win.focus();
-                //Object.assign(document.createElement('a'), { target: '_blank', href: targetClassUrl }).click()
+                //let win = window.open(targetClassUrl, '_blank');
+                //win.focus();
+
+                console.log('Next class URL: ' + targetClassUrl);
+                console.log('Next class Name: ' + targetClassText);
+
                 classLinkButton.innerHTML = targetClassText;
                 classLinkButton.href = targetClassUrl;
                 classLinkButton.style.display = 'block';
+                scheduleTextMessage.innerHTML = '';
+                Object.assign(document.createElement('a'), { target: '_blank', href: targetClassUrl }).click()
             } else {
-                console.log('No zoom class URL found');
+                console.log('No Zoom class URL found');
                 classLinkButton.style.display = 'none';
+                scheduleTextMessage.innerHTML = 'אין שיעור בקרוב';
             }
 
             console.log('main done');
